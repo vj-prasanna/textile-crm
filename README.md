@@ -48,7 +48,6 @@ Built with **Next.js 15**, **TypeScript**, **Tailwind CSS**, **Material UI**, **
 | Animations | GSAP 3 |
 | Auth | Firebase Authentication |
 | Database | Cloud Firestore |
-| Storage | Firebase Storage |
 | State | Zustand |
 | AI | Google Gemini API |
 | CI/CD | GitHub Actions + Vercel |
@@ -65,7 +64,6 @@ Before running this project, you need:
 3. **Firebase Project** — [Create one](https://console.firebase.google.com)
    - Enable Authentication (Email/Password + Google)
    - Create Firestore Database (test mode)
-   - Enable Storage
    - Register a Web App and copy the config
 4. **Gemini API Key** — [Get one](https://aistudio.google.com/apikey)
 
@@ -94,7 +92,6 @@ Create a `.env.local` file in the root:
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 GEMINI_API_KEY=your_gemini_api_key

@@ -9,7 +9,7 @@ A full-stack Textile CRM built with Next.js 15, covering the complete textile ch
 - **Framework:** Next.js 15 (App Router, TypeScript)
 - **Styling:** Tailwind CSS v4 + Material UI v6
 - **Animations:** GSAP 3
-- **Backend:** Firebase (Auth, Firestore, Storage)
+- **Backend:** Firebase (Auth, Firestore)
 - **State:** Zustand 5
 - **AI:** Google Gemini API
 - **CI/CD:** GitHub Actions + Vercel
@@ -31,7 +31,8 @@ src/
 │   └── animations/   # GSAP wrappers (FadeIn, StaggerList, Counter)
 ├── lib/              # Core utilities
 │   ├── firebase/     # Firebase config, auth helpers, Firestore CRUD
-│   └── ai/           # Gemini API client
+│   ├── ai/           # Gemini API client
+│   └── icons/        # Category-based product icons mapping
 ├── hooks/            # Custom React hooks (useAuth, useFirestore, useGSAP)
 ├── store/            # Zustand stores (auth, contacts, orders)
 └── types/            # TypeScript interfaces (Contact, Product, Order, Payment)
@@ -91,7 +92,6 @@ Required in `.env.local`:
 NEXT_PUBLIC_FIREBASE_API_KEY
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 NEXT_PUBLIC_FIREBASE_PROJECT_ID
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 NEXT_PUBLIC_FIREBASE_APP_ID
 GEMINI_API_KEY

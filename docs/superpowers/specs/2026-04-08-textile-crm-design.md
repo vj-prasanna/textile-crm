@@ -30,7 +30,7 @@ A Textile CRM (Customer Relationship Management) system for businesses operating
 | Animations | GSAP | 3.x |
 | Auth | Firebase Auth | v10 |
 | Database | Cloud Firestore | v10 |
-| Storage | Firebase Storage | v10 |
+| Icons | Material Icons + Lucide React | - |
 | State | Zustand | 5.x |
 | AI | Google Gemini API | latest |
 | CI/CD | GitHub Actions + Vercel | - |
@@ -169,7 +169,7 @@ interface Product {
   pricePerUnit: number;
   stock: number;
   minStock: number;
-  imageUrl?: string;
+  icon: string;             // Category-based icon (yarn, fabric, garment)
   description?: string;
   isActive: boolean;
   createdAt: Timestamp;
@@ -390,7 +390,7 @@ Approach: Create reusable GSAP wrapper components in `src/components/animations/
 
 The user must complete these before coding begins:
 
-1. **Firebase Project** — create project, enable Auth (Email + Google), Firestore (test mode), Storage
+1. **Firebase Project** — create project, enable Auth (Email + Google), Firestore (test mode)
 2. **Gemini API Key** — generate from Google AI Studio
 3. **GitHub Repo** — create `textile-crm` (public)
 4. **Vercel Account** — sign up with GitHub
