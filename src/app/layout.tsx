@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { MuiThemeProvider } from "@/components/ui/MuiThemeProvider";
 import { AuthProvider } from "@/components/ui/AuthProvider";
 
@@ -22,9 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full bg-gray-50">
-        <MuiThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </MuiThemeProvider>
+        <AppRouterCacheProvider>
+          <MuiThemeProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </MuiThemeProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );
