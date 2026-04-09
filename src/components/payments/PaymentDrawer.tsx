@@ -87,9 +87,9 @@ export function PaymentDrawer({ open, onClose, defaultOrderId }: Props) {
       contactName: selectedOrder.contactName,
       amount: amount as number,
       method,
-      reference: reference || undefined,
       date: Timestamp.fromDate(new Date(date)),
-      notes: notes || undefined,
+      ...(reference && { reference }),
+      ...(notes && { notes }),
     };
 
     try {
