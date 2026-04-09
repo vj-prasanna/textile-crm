@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { MuiThemeProvider } from "@/components/ui/MuiThemeProvider";
+import { AuthProvider } from "@/components/ui/AuthProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full bg-gray-50">
-        <MuiThemeProvider>{children}</MuiThemeProvider>
+        <MuiThemeProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </MuiThemeProvider>
       </body>
     </html>
   );
