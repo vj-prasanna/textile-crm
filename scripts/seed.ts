@@ -124,7 +124,162 @@ const PRODUCTS = [
   { name: "Linen Fabric (Natural)", sku: "FAB-LNN-006", category: "fabric", subCategory: "Linen", unit: "meter", pricePerUnit: 210, stock: 180, minStock: 200, icon: "fabric", isActive: true, description: "Low stock — order soon" },
 ];
 
+// ── Orders seed data ──────────────────────────────────────────────────────
+type OrderStatus   = "draft"|"confirmed"|"in_production"|"dispatched"|"delivered"|"cancelled";
+type PaymentStatus = "unpaid"|"partial"|"paid";
+type PayMethod     = "cash"|"bank_transfer"|"upi"|"cheque"|"credit";
+
+interface OrderSpec {
+  contactName: string;
+  items: { productName: string; qty: number }[];
+  taxRate: number;
+  discount: number;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  daysAgoCreated: number;
+}
+
+const ORDER_SPECS: OrderSpec[] = [
+  { contactName: "Mumbai Textile Hub",     items: [{ productName: "Cotton Grey Fabric", qty: 500 }, { productName: "Rayon Viscose", qty: 300 }], taxRate: 18, discount: 2000, status: "delivered",     paymentStatus: "paid",    daysAgoCreated: 45 },
+  { contactName: "Krishna Exports Pvt Ltd",items: [{ productName: "Pure Silk Fabric",   qty: 200 }],                                             taxRate: 18, discount: 0,    status: "dispatched",    paymentStatus: "partial", daysAgoCreated: 20 },
+  { contactName: "Patel Garments",         items: [{ productName: "Men's Formal Shirt (White)", qty: 200 }, { productName: "Kids T-Shirt (Cotton)", qty: 300 }], taxRate: 18, discount: 0, status: "confirmed", paymentStatus: "unpaid", daysAgoCreated: 10 },
+  { contactName: "Chennai Cotton Co.",     items: [{ productName: "Cotton Yarn (30s)",   qty: 100 }],                                             taxRate: 5,  discount: 0,    status: "in_production", paymentStatus: "partial", daysAgoCreated: 14 },
+  { contactName: "Jaipur Fabrics",         items: [{ productName: "Denim Fabric (14 oz)", qty: 150 }, { productName: "Polyester Yarn (150D)", qty: 200 }],       taxRate: 18, discount: 1500, status: "delivered", paymentStatus: "paid", daysAgoCreated: 60 },
+  { contactName: "Style Craft India",      items: [{ productName: "Women's Salwar Kameez", qty: 50 }],                                           taxRate: 12, discount: 0,    status: "draft",         paymentStatus: "unpaid", daysAgoCreated: 2  },
+  { contactName: "Royal Weavers Hyderabad",items: [{ productName: "Polyester Georgette", qty: 400 }],                                            taxRate: 18, discount: 0,    status: "confirmed",     paymentStatus: "unpaid", daysAgoCreated: 7  },
+  { contactName: "Mumbai Textile Hub",     items: [{ productName: "Cotton Yarn (30s)",  qty: 500 }, { productName: "Blended Yarn (PC 65/35)", qty: 300 }],       taxRate: 18, discount: 0, status: "in_production", paymentStatus: "partial", daysAgoCreated: 18 },
+];
+
+// Payments to create per order index (0-based), with amounts and methods
+interface PaymentSpec {
+  orderIdx: number;
+  amount: number;
+  method: PayMethod;
+  reference?: string;
+  daysAgoDate: number;
+}
+
 // ── Seed functions ─────────────────────────────────────────────────────────
+async function seedOrders(): Promise<string[]> {
+  console.log("\n🧾 Seeding orders...");
+
+  // Fetch seeded contacts & products
+  const contactsSnap = await getDocs(query(collection(db, "contacts"), where("__seeded", "==", true)));
+  const productsSnap = await getDocs(query(collection(db, "products"), where("__seeded", "==", true)));
+
+  if (contactsSnap.empty || productsSnap.empty) {
+    console.log("   ⚠️  No seeded contacts/products found — run full seed first.");
+    return [];
+  }
+
+  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const products  = productsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+
+  const findContact = (name: string) => contacts.find((c) => (c.companyName as string).includes(name.split(" ")[0]));
+  const findProduct = (name: string) => products.find((p) => (p.name as string) === name);
+
+  const orderIds: string[] = [];
+
+  for (let i = 0; i < ORDER_SPECS.length; i++) {
+    const spec = ORDER_SPECS[i];
+    const contact = findContact(spec.contactName);
+    if (!contact) { console.log(`   ⚠️  Contact not found: ${spec.contactName}`); continue; }
+
+    const items: Record<string, unknown>[] = [];
+    for (const { productName, qty } of spec.items) {
+      const product = findProduct(productName);
+      if (!product) { console.log(`   ⚠️  Product not found: ${productName}`); continue; }
+      const price = product.pricePerUnit as number;
+      items.push({ productId: product.id, productName: product.name, quantity: qty, pricePerUnit: price, total: qty * price });
+    }
+    if (items.length === 0) continue;
+
+    const subtotal = items.reduce((s, it) => s + (it.total as number), 0);
+    const tax      = Math.round(subtotal * spec.taxRate / 100);
+    const grandTotal = subtotal + tax - spec.discount;
+    const orderNumber = `ORD-2026-${String(i + 1).padStart(4, "0")}`;
+
+    const ref = await addDoc(collection(db, "orders"), {
+      orderNumber,
+      contactId:     contact.id,
+      contactName:   contact.companyName,
+      items,
+      subtotal,
+      tax,
+      discount:      spec.discount,
+      grandTotal,
+      status:        spec.status,
+      paymentStatus: spec.paymentStatus,
+      assignedTo:    "seed",
+      notes:         "",
+      __seeded:      true,
+      createdAt:     daysAgo(spec.daysAgoCreated),
+      updatedAt:     daysAgo(Math.max(0, spec.daysAgoCreated - 2)),
+    });
+
+    orderIds.push(ref.id);
+    console.log(`   ✓ ${orderNumber} — ${contact.companyName as string} (${spec.status}, ${spec.paymentStatus}) — ₹${grandTotal.toLocaleString("en-IN")}`);
+  }
+
+  console.log(`   → ${orderIds.length} orders added`);
+  return orderIds;
+}
+
+async function seedPayments(orderIds: string[]): Promise<void> {
+  console.log("\n💳 Seeding payments...");
+  if (orderIds.length === 0) { console.log("   ⚠️  No order IDs to reference."); return; }
+
+  // Fetch the created orders to get contactId, contactName, grandTotal, orderNumber
+  const ordersSnap = await getDocs(query(collection(db, "orders"), where("__seeded", "==", true)));
+  const orders = ordersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+
+  const getOrder = (idx: number) => orders.find((o) => o.id === orderIds[idx]);
+
+  // Define payments: (orderIdx, amount, method, reference?, daysAgo)
+  const PAYMENTS: PaymentSpec[] = [
+    // Order 0 (Mumbai Textile Hub, delivered, PAID) — single full payment
+    { orderIdx: 0, amount: 0,      method: "bank_transfer", reference: "NEFT20260315001", daysAgoDate: 38 },
+    // Order 1 (Krishna Exports, dispatched, PARTIAL) — 60% paid via UPI
+    { orderIdx: 1, amount: 63720,  method: "upi",           reference: "UPI20260322001",  daysAgoDate: 12 },
+    // Order 3 (Chennai Cotton, in_production, PARTIAL) — advance cash
+    { orderIdx: 3, amount: 10000,  method: "cash",          daysAgoDate: 10 },
+    // Order 4 (Jaipur Fabrics, delivered, PAID) — two cheques
+    { orderIdx: 4, amount: 40000,  method: "cheque",        reference: "CHQ-004521",      daysAgoDate: 50 },
+    { orderIdx: 4, amount: 0,      method: "bank_transfer", reference: "NEFT20260115002", daysAgoDate: 35 },
+    // Order 7 (Mumbai Textile Hub, in_production, PARTIAL) — advance
+    { orderIdx: 7, amount: 100000, method: "bank_transfer", reference: "NEFT20260325003", daysAgoDate: 14 },
+  ];
+
+  let count = 0;
+  for (const spec of PAYMENTS) {
+    const order = getOrder(spec.orderIdx);
+    if (!order) { console.log(`   ⚠️  Order at index ${spec.orderIdx} not found`); continue; }
+
+    // amount = 0 means "full remaining" (used for the paid orders)
+    const grandTotal = order.grandTotal as number;
+    const amount = spec.amount === 0 ? grandTotal : spec.amount;
+
+    const doc: Record<string, unknown> = {
+      orderId:     order.id,
+      orderNumber: order.orderNumber,
+      contactId:   order.contactId,
+      contactName: order.contactName,
+      amount,
+      method:      spec.method,
+      date:        daysAgo(spec.daysAgoDate),
+      __seeded:    true,
+      createdAt:   daysAgo(spec.daysAgoDate),
+    };
+    if (spec.reference) doc.reference = spec.reference;
+
+    await addDoc(collection(db, "payments"), doc);
+    console.log(`   ✓ ₹${amount.toLocaleString("en-IN")} — ${order.orderNumber as string} — ${spec.method}`);
+    count++;
+  }
+
+  console.log(`   → ${count} payments added`);
+}
+
 async function seedContacts() {
   console.log("\n📇 Seeding contacts...");
   const col = collection(db, "contacts");
@@ -182,10 +337,20 @@ async function main() {
       await seedContacts();
     } else if (arg === "products") {
       await seedProducts();
+    } else if (arg === "orders") {
+      const ids = await seedOrders();
+      await seedPayments(ids);
+    } else if (arg === "payments") {
+      // Seed payments against already-seeded orders
+      const ordersSnap = await getDocs(query(collection(db, "orders"), where("__seeded", "==", true)));
+      const ids = ordersSnap.docs.map((d) => d.id);
+      await seedPayments(ids);
     } else {
       // Default: seed everything
       await seedContacts();
       await seedProducts();
+      const ids = await seedOrders();
+      await seedPayments(ids);
     }
     console.log("\n✅ Done!\n");
     process.exit(0);

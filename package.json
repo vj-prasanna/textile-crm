@@ -11,6 +11,8 @@
     "seed": "tsx scripts/seed.ts",
     "seed:contacts": "tsx scripts/seed.ts contacts",
     "seed:products": "tsx scripts/seed.ts products",
+    "seed:orders": "tsx scripts/seed.ts orders",
+    "seed:payments": "tsx scripts/seed.ts payments",
     "seed:clear": "tsx scripts/seed.ts clear"
   },
   "dependencies": {
