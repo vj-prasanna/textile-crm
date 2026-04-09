@@ -13,6 +13,7 @@
     "seed:products": "tsx scripts/seed.ts products",
     "seed:orders": "tsx scripts/seed.ts orders",
     "seed:payments": "tsx scripts/seed.ts payments",
+    "seed:pipeline": "tsx scripts/seed.ts pipeline",
     "seed:clear": "tsx scripts/seed.ts clear"
   },
   "dependencies": {

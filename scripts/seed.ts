@@ -107,6 +107,34 @@ const CONTACTS = [
   },
 ];
 
+// ── Pipeline seed data ────────────────────────────────────────────────────
+type DealStage = "new_lead"|"contacted"|"quoted"|"negotiation"|"won"|"lost";
+
+interface DealSpec {
+  title: string;
+  contactName: string;
+  value: number;
+  stage: DealStage;
+  probability: number;
+  daysAgoCreated: number;
+  daysToClose: number;
+}
+
+const PIPELINE_DEALS: DealSpec[] = [
+  { title: "Bulk Cotton Yarn Supply Contract",     contactName: "Vardhman Yarns Ltd",      value: 850000,  stage: "won",         probability: 100, daysAgoCreated: 60, daysToClose: -30 },
+  { title: "Silk Fabric Seasonal Order",           contactName: "Krishna Exports Pvt Ltd", value: 420000,  stage: "negotiation", probability: 70,  daysAgoCreated: 14, daysToClose: 10  },
+  { title: "Polyester Georgette — Q2 Supply",      contactName: "Mumbai Textile Hub",      value: 680000,  stage: "quoted",      probability: 55,  daysAgoCreated: 21, daysToClose: 20  },
+  { title: "Denim Fabric Annual Contract",         contactName: "Patel Garments",          value: 1200000, stage: "contacted",   probability: 35,  daysAgoCreated: 7,  daysToClose: 45  },
+  { title: "Kids Apparel Range",                   contactName: "Style Craft India",       value: 195000,  stage: "new_lead",    probability: 20,  daysAgoCreated: 3,  daysToClose: 60  },
+  { title: "Festival Season Garment Order",        contactName: "Royal Weavers Hyderabad", value: 310000,  stage: "quoted",      probability: 60,  daysAgoCreated: 10, daysToClose: 25  },
+  { title: "Cotton Fabric Export Tender",          contactName: "Chennai Cotton Co.",      value: 750000,  stage: "negotiation", probability: 65,  daysAgoCreated: 18, daysToClose: 15  },
+  { title: "Linen & Printed Fabric Mix",           contactName: "Jaipur Fabrics",          value: 280000,  stage: "contacted",   probability: 40,  daysAgoCreated: 5,  daysToClose: 40  },
+  { title: "Raw Silk Yarn Procurement",            contactName: "Silk Route Traders",      value: 560000,  stage: "won",         probability: 100, daysAgoCreated: 45, daysToClose: -10 },
+  { title: "Blended Yarn Pilot Batch",             contactName: "Indore Cotton Mills",     value: 125000,  stage: "new_lead",    probability: 15,  daysAgoCreated: 2,  daysToClose: 90  },
+  { title: "Wholesale Cotton Fabric Deal",         contactName: "Mumbai Textile Hub",      value: 940000,  stage: "lost",        probability: 0,   daysAgoCreated: 50, daysToClose: -5  },
+  { title: "Georgette Dupatta Export",             contactName: "Krishna Exports Pvt Ltd", value: 230000,  stage: "contacted",   probability: 30,  daysAgoCreated: 8,  daysToClose: 35  },
+];
+
 // ── Products seed data ─────────────────────────────────────────────────────
 const PRODUCTS = [
   { name: "Cotton Grey Fabric", sku: "FAB-CTN-001", category: "fabric", subCategory: "Cotton", unit: "meter", pricePerUnit: 85, stock: 4200, minStock: 500, icon: "fabric", isActive: true },
@@ -280,6 +308,42 @@ async function seedPayments(orderIds: string[]): Promise<void> {
   console.log(`   → ${count} payments added`);
 }
 
+async function seedPipeline(): Promise<void> {
+  console.log("\n🎯 Seeding pipeline...");
+
+  const contactsSnap = await getDocs(
+    query(collection(db, "contacts"), where("__seeded", "==", true))
+  );
+  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const findContact = (name: string) =>
+    contacts.find((c) => (c.companyName as string).includes(name.split(" ")[0]));
+
+  let count = 0;
+  for (const spec of PIPELINE_DEALS) {
+    const contact = findContact(spec.contactName);
+    const deal: Record<string, unknown> = {
+      title: spec.title,
+      value: spec.value,
+      stage: spec.stage,
+      probability: spec.probability,
+      assignedTo: "seed",
+      activities: [],
+      __seeded: true,
+      createdAt: daysAgo(spec.daysAgoCreated),
+      updatedAt: daysAgo(Math.max(0, spec.daysAgoCreated - 2)),
+      expectedCloseDate: Timestamp.fromDate(new Date(Date.now() + spec.daysToClose * 86400000)),
+    };
+    if (contact) {
+      deal.contactId = contact.id;
+      deal.contactName = (contact as Record<string, unknown>).companyName as string;
+    }
+    await addDoc(collection(db, "pipeline"), deal);
+    console.log(`   ✓ ${spec.title} — ${spec.stage} (${spec.probability}%)`);
+    count++;
+  }
+  console.log(`   → ${count} deals added`);
+}
+
 async function seedContacts() {
   console.log("\n📇 Seeding contacts...");
   const col = collection(db, "contacts");
@@ -345,12 +409,15 @@ async function main() {
       const ordersSnap = await getDocs(query(collection(db, "orders"), where("__seeded", "==", true)));
       const ids = ordersSnap.docs.map((d) => d.id);
       await seedPayments(ids);
+    } else if (arg === "pipeline") {
+      await seedPipeline();
     } else {
       // Default: seed everything
       await seedContacts();
       await seedProducts();
       const ids = await seedOrders();
       await seedPayments(ids);
+      await seedPipeline();
     }
     console.log("\n✅ Done!\n");
     process.exit(0);
