@@ -200,8 +200,8 @@ async function seedOrders(): Promise<string[]> {
     return [];
   }
 
-  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
-  const products  = productsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
+  const products  = productsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
 
   const findContact = (name: string) => contacts.find((c) => (c.companyName as string).includes(name.split(" ")[0]));
   const findProduct = (name: string) => products.find((p) => (p.name as string) === name);
@@ -259,7 +259,7 @@ async function seedPayments(orderIds: string[]): Promise<void> {
 
   // Fetch the created orders to get contactId, contactName, grandTotal, orderNumber
   const ordersSnap = await getDocs(query(collection(db, "orders"), where("__seeded", "==", true)));
-  const orders = ordersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const orders = ordersSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
 
   const getOrder = (idx: number) => orders.find((o) => o.id === orderIds[idx]);
 
@@ -314,7 +314,7 @@ async function seedPipeline(): Promise<void> {
   const contactsSnap = await getDocs(
     query(collection(db, "contacts"), where("__seeded", "==", true))
   );
-  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
   const findContact = (name: string) =>
     contacts.find((c) => (c.companyName as string).includes(name.split(" ")[0]));
 
@@ -335,7 +335,7 @@ async function seedPipeline(): Promise<void> {
     };
     if (contact) {
       deal.contactId = contact.id;
-      deal.contactName = (contact as Record<string, unknown>).companyName as string;
+      deal.contactName = contact.companyName as string;
     }
     await addDoc(collection(db, "pipeline"), deal);
     console.log(`   ✓ ${spec.title} — ${spec.stage} (${spec.probability}%)`);
