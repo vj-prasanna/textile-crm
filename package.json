@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "seed": "tsx scripts/seed.ts",
+    "seed:contacts": "tsx scripts/seed.ts contacts",
+    "seed:products": "tsx scripts/seed.ts products",
+    "seed:clear": "tsx scripts/seed.ts clear"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -28,9 +32,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
