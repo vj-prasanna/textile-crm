@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Box,
   Button,
   TextField,
   Typography,
@@ -14,14 +13,15 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { registerWithEmail } from "@/lib/firebase/auth";
+import { useThemeStore } from "@/store/useThemeStore";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function RegisterPage() {
+  const { mode } = useThemeStore();
+  const dark = mode === "dark";
+
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "admin",
+    name: "", email: "", password: "", confirmPassword: "", role: "admin",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -42,11 +42,8 @@ export default function RegisterPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    const err = validate();
+    if (err) { setError(err); return; }
     setLoading(true);
     try {
       await registerWithEmail(form.email, form.password, form.name);
@@ -54,8 +51,6 @@ export default function RegisterPage() {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("email-already-in-use")) {
         setError("This email is already registered. Try signing in.");
-      } else if (msg.includes("weak-password")) {
-        setError("Password is too weak. Use at least 8 characters.");
       } else {
         setError("Registration failed. Please try again.");
       }
@@ -64,164 +59,214 @@ export default function RegisterPage() {
     }
   }
 
+  const inputSx = {
+    "& .MuiOutlinedInput-root": {
+      background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.6)",
+      backdropFilter: "blur(10px)",
+      borderRadius: "10px",
+      color: dark ? "#F1F5F9" : "#1E293B",
+      "& fieldset": {
+        borderColor: dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)",
+      },
+      "&:hover fieldset": {
+        borderColor: dark ? "rgba(79,142,247,0.5)" : "rgba(37,99,235,0.4)",
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "#4F8EF7",
+        boxShadow: "0 0 0 3px rgba(79,142,247,0.15)",
+      },
+    },
+    "& .MuiInputLabel-root": {
+      color: dark ? "rgba(241,245,249,0.5)" : "rgba(30,41,59,0.5)",
+      "&.Mui-focused": { color: "#4F8EF7" },
+    },
+    "& .MuiInputBase-input": {
+      color: dark ? "#F1F5F9" : "#1E293B",
+    },
+    "& .MuiSelect-icon": {
+      color: dark ? "#94A3B8" : "#64748B",
+    },
+  };
+
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel — Branding */}
+    <div
+      className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-8"
+      style={{
+        background: dark
+          ? "linear-gradient(135deg, #060B18 0%, #0D1B2A 50%, #060E1F 100%)"
+          : "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, #EDE9FE 100%)",
+      }}
+    >
+      {/* Animated blobs */}
       <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
-        style={{ background: "linear-gradient(135deg, #1B4F72 0%, #2E86C1 100%)" }}
-      >
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">T</span>
-            </div>
-            <Typography variant="h6" className="!text-white !font-bold">
-              Textile CRM
-            </Typography>
-          </div>
-        </div>
+        className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 animate-blob"
+        style={{ background: dark ? "#6366F1" : "#818CF8" }}
+      />
+      <div
+        className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full blur-[100px] opacity-20 animate-blob animation-delay-2000"
+        style={{ background: dark ? "#8B5CF6" : "#C4B5FD" }}
+      />
+      <div
+        className="absolute top-[30%] left-[20%] w-[350px] h-[350px] rounded-full blur-[100px] opacity-10 animate-blob animation-delay-4000"
+        style={{ background: dark ? "#3B82F6" : "#93C5FD" }}
+      />
 
-        <div className="space-y-6">
-          <Typography variant="h3" className="!text-white !font-bold !leading-tight">
-            Start managing your business today
-          </Typography>
-          <Typography className="!text-blue-100 !text-lg">
-            Join hundreds of textile businesses who use our CRM to grow their revenue and streamline operations.
-          </Typography>
-
-          <div className="space-y-4 pt-4">
-            {[
-              "Track all your customers & suppliers",
-              "Manage orders from creation to delivery",
-              "AI-powered sales forecasts & insights",
-              "Real-time payment tracking",
-            ].map((feature) => (
-              <div key={feature} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs">✓</span>
-                </div>
-                <Typography className="!text-blue-100">{feature}</Typography>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <Typography className="!text-blue-300 !text-sm">
-          © 2026 Textile CRM. Built for the textile industry.
-        </Typography>
+      {/* Theme toggle */}
+      <div className="absolute top-5 right-5 z-10">
+        <ThemeToggle />
       </div>
 
-      {/* Right Panel — Register Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
-        <Box className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#1B4F72" }}>
-              <span className="text-white font-bold">T</span>
-            </div>
-            <Typography variant="h6" className="!font-bold" style={{ color: "#1B4F72" }}>
-              Textile CRM
-            </Typography>
+      {/* Glass card */}
+      <div
+        className="relative z-10 w-full max-w-md rounded-2xl p-8"
+        style={{
+          background: dark ? "rgba(15,23,42,0.6)" : "rgba(255,255,255,0.65)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          border: dark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.7)",
+          boxShadow: dark
+            ? "0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)"
+            : "0 25px 60px rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+        }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-7">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{
+              background: "linear-gradient(135deg, #4F8EF7, #8B5CF6)",
+              boxShadow: "0 4px 15px rgba(79,142,247,0.4)",
+            }}
+          >
+            <span className="text-white font-bold text-lg">T</span>
           </div>
-
-          <Typography variant="h4" className="!font-bold !text-gray-900 !mb-2">
-            Create an account
+          <Typography
+            variant="h6"
+            style={{ color: dark ? "#F1F5F9" : "#1E293B", fontWeight: 700 }}
+          >
+            Textile CRM
           </Typography>
-          <Typography className="!text-gray-500 !mb-8">
-            Set up your CRM in under a minute
-          </Typography>
+        </div>
 
-          {error && (
-            <Alert severity="error" className="!mb-4" onClose={() => setError("")}>
-              {error}
-            </Alert>
-          )}
+        <Typography
+          variant="h4"
+          style={{ color: dark ? "#F1F5F9" : "#1E293B", fontWeight: 700, marginBottom: 4 }}
+        >
+          Create an account
+        </Typography>
+        <Typography style={{ color: dark ? "#94A3B8" : "#64748B", marginBottom: 24, fontSize: 15 }}>
+          Set up your CRM in under a minute
+        </Typography>
 
-          <form onSubmit={handleRegister} className="space-y-4">
-            <TextField
-              label="Full Name"
-              fullWidth
-              required
-              value={form.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              autoComplete="name"
-            />
-            <TextField
-              label="Email address"
-              type="email"
-              fullWidth
-              required
-              value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              autoComplete="email"
-            />
-            <TextField
-              label="Password"
-              type={showPassword ? "text" : "password"}
-              fullWidth
-              required
-              value={form.password}
-              onChange={(e) => handleChange("password", e.target.value)}
-              helperText="Minimum 8 characters"
-              autoComplete="new-password"
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError("")}>
+            {error}
+          </Alert>
+        )}
+
+        <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <TextField
+            label="Full Name" fullWidth required
+            value={form.name} onChange={(e) => handleChange("name", e.target.value)}
+            autoComplete="name" sx={inputSx}
+          />
+          <TextField
+            label="Email address" type="email" fullWidth required
+            value={form.email} onChange={(e) => handleChange("email", e.target.value)}
+            autoComplete="email" sx={inputSx}
+          />
+          <TextField
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            fullWidth required
+            value={form.password} onChange={(e) => handleChange("password", e.target.value)}
+            helperText="Minimum 8 characters"
+            autoComplete="new-password"
+            sx={{
+              ...inputSx,
+              "& .MuiFormHelperText-root": { color: dark ? "#475569" : "#94A3B8" },
+            }}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)} edge="end" size="small"
+                      sx={{ color: dark ? "#94A3B8" : "#64748B" }}
+                    >
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <TextField
+            label="Confirm Password" type="password" fullWidth required
+            value={form.confirmPassword} onChange={(e) => handleChange("confirmPassword", e.target.value)}
+            autoComplete="new-password" sx={inputSx}
+          />
+          <TextField
+            label="Your Role" select fullWidth required
+            value={form.role} onChange={(e) => handleChange("role", e.target.value)}
+            sx={{
+              ...inputSx,
+              "& .MuiSelect-select": { color: dark ? "#F1F5F9" : "#1E293B" },
+            }}
+            slotProps={{
+              select: {
+                MenuProps: {
+                  slotProps: {
+                    paper: {
+                      sx: {
+                        background: dark ? "rgba(15,23,42,0.95)" : "#FFFFFF",
+                        backdropFilter: "blur(20px)",
+                        border: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)",
+                        borderRadius: 2,
+                        "& .MuiMenuItem-root": {
+                          color: dark ? "#F1F5F9" : "#1E293B",
+                          "&:hover": { background: dark ? "rgba(79,142,247,0.12)" : "rgba(79,142,247,0.06)" },
+                        },
+                      },
+                    },
+                  },
                 },
-              }}
-            />
-            <TextField
-              label="Confirm Password"
-              type="password"
-              fullWidth
-              required
-              value={form.confirmPassword}
-              onChange={(e) => handleChange("confirmPassword", e.target.value)}
-              autoComplete="new-password"
-            />
-            <TextField
-              label="Your Role"
-              select
-              fullWidth
-              required
-              value={form.role}
-              onChange={(e) => handleChange("role", e.target.value)}
-            >
-              <MenuItem value="admin">Admin — Full access</MenuItem>
-              <MenuItem value="sales">Sales Rep — Limited access</MenuItem>
-            </TextField>
+              },
+            }}
+          >
+            <MenuItem value="admin">Admin — Full access</MenuItem>
+            <MenuItem value="sales">Sales Rep — Limited access</MenuItem>
+          </TextField>
 
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading}
-              sx={{
-                bgcolor: "#1B4F72",
-                py: 1.5,
-                mt: 1,
-                "&:hover": { bgcolor: "#154360" },
-              }}
-            >
-              {loading ? "Creating account..." : "Create Account"}
-            </Button>
-          </form>
+          <Button
+            type="submit" fullWidth variant="contained" size="large"
+            disabled={loading}
+            sx={{
+              mt: 0.5, py: 1.5, borderRadius: "10px", fontWeight: 700, fontSize: 15,
+              background: "linear-gradient(135deg, #4F8EF7, #6366F1)",
+              boxShadow: "0 4px 20px rgba(79,142,247,0.4)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #3B82F6, #4F46E5)",
+                boxShadow: "0 6px 25px rgba(79,142,247,0.5)",
+                transform: "translateY(-1px)",
+              },
+              "&:active": { transform: "translateY(0)" },
+              transition: "all 0.2s ease",
+            }}
+          >
+            {loading ? "Creating account..." : "Create Account"}
+          </Button>
+        </form>
 
-          <Typography className="!text-center !mt-6 !text-gray-600">
-            Already have an account?{" "}
-            <Link href="/login" className="font-semibold" style={{ color: "#1B4F72" }}>
-              Sign in
-            </Link>
-          </Typography>
-        </Box>
+        <Typography sx={{ textAlign: "center", mt: 3, fontSize: 14, color: dark ? "#64748B" : "#94A3B8" }}>
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            style={{ color: "#4F8EF7", fontWeight: 600, textDecoration: "none" }}
+          >
+            Sign in
+          </Link>
+        </Typography>
       </div>
     </div>
   );
