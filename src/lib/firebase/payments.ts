@@ -9,10 +9,24 @@ import { Order } from "@/types/order";
 
 const COL = "payments";
 
-export function subscribeToPayments(callback: (payments: Payment[]) => void) {
-  const q = query(collection(db, COL), orderBy("createdAt", "desc"));
+export function subscribeToPayments(
+  userId: string,
+  role: string,
+  callback: (payments: Payment[]) => void
+) {
+  const col = collection(db, COL);
+  // See contacts.ts — sales role sorts client-side to avoid composite index.
+  const q =
+    role === "admin"
+      ? query(col, orderBy("createdAt", "desc"))
+      : query(col, where("assignedTo", "==", userId));
   return onSnapshot(q, (snap) => {
     const payments = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Payment[];
+    if (role !== "admin") {
+      payments.sort(
+        (a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
+      );
+    }
     callback(payments);
   });
 }
@@ -29,9 +43,17 @@ export async function createPayment(data: PaymentFormData): Promise<string> {
   );
   const totalPaid = alreadyPaid + data.amount;
 
+  // Inherit assignedTo from the parent order so the sales rep who owns the
+  // order also owns the payment record.
+  const orderRef = await getDoc(doc(db, "orders", data.orderId));
+  const assignedTo = orderRef.exists()
+    ? ((orderRef.data() as Order).assignedTo ?? "")
+    : "";
+
   // Create the payment record
   const ref = await addDoc(collection(db, COL), {
     ...data,
+    assignedTo,
     createdAt: serverTimestamp(),
   });
 

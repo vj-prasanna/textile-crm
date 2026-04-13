@@ -15,12 +15,18 @@ export function subscribeToOrders(
   callback: (orders: Order[]) => void
 ) {
   const col = collection(db, COL);
+  // See contacts.ts — sales role sorts client-side to avoid composite index.
   const q =
     role === "admin"
       ? query(col, orderBy("createdAt", "desc"))
-      : query(col, where("assignedTo", "==", userId), orderBy("createdAt", "desc"));
+      : query(col, where("assignedTo", "==", userId));
   return onSnapshot(q, (snap) => {
     const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Order[];
+    if (role !== "admin") {
+      orders.sort(
+        (a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
+      );
+    }
     callback(orders);
   });
 }

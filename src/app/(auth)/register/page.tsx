@@ -46,7 +46,7 @@ export default function RegisterPage() {
     if (err) { setError(err); return; }
     setLoading(true);
     try {
-      await registerWithEmail(form.email, form.password, form.name);
+      await registerWithEmail(form.email, form.password, form.name, form.role as "admin" | "sales");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("email-already-in-use")) {

@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full bg-gray-50">
+      <body className="min-h-full bg-gray-50" suppressHydrationWarning>
         <AppRouterCacheProvider>
           <MuiThemeProvider>
             <AuthProvider>{children}</AuthProvider>

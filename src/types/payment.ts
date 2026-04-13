@@ -11,7 +11,8 @@ export interface Payment {
   reference?: string;
   date: Timestamp;
   notes?: string;
+  assignedTo: string;
   createdAt: Timestamp;
 }
 
-export type PaymentFormData = Omit<Payment, "id" | "createdAt">;
+export type PaymentFormData = Omit<Payment, "id" | "assignedTo" | "createdAt">;

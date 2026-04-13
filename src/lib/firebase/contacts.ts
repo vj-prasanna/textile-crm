@@ -14,13 +14,20 @@ export function subscribeToContacts(
   callback: (contacts: Contact[]) => void
 ) {
   const col = collection(db, COL);
+  // Admin: server-side orderBy. Sales: filter only, sort client-side so we
+  // don't require a composite (assignedTo, createdAt) Firestore index.
   const q =
     role === "admin"
       ? query(col, orderBy("createdAt", "desc"))
-      : query(col, where("assignedTo", "==", userId), orderBy("createdAt", "desc"));
+      : query(col, where("assignedTo", "==", userId));
 
   return onSnapshot(q, (snap) => {
     const contacts = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[];
+    if (role !== "admin") {
+      contacts.sort(
+        (a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
+      );
+    }
     callback(contacts);
   });
 }
