@@ -20,10 +20,17 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
+  doc,
+  setDoc,
   query,
   where,
   Timestamp,
 } from "firebase/firestore";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 
 // ── Firebase init ──────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -37,9 +44,63 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const firebaseAuth = getAuth(app);
 
 const now = Timestamp.now();
 const daysAgo = (d: number) => Timestamp.fromDate(new Date(Date.now() - d * 86400000));
+
+// ── Demo sales rep credentials ─────────────────────────────────────────────
+const DEMO_SALES_REP = {
+  email: "sales@demo.com",
+  password: "sales@1234",
+  displayName: "Demo Sales Rep",
+};
+
+/**
+ * Create (or sign into) the demo sales rep account and write the Firestore
+ * users doc with role=sales. Returns the UID so seeded data can be assigned
+ * to this account, letting you demo role-based access immediately.
+ */
+async function seedDemoSalesRep(): Promise<string> {
+  console.log("\n👤 Seeding demo sales rep...");
+  let uid: string;
+  try {
+    const cred = await createUserWithEmailAndPassword(
+      firebaseAuth,
+      DEMO_SALES_REP.email,
+      DEMO_SALES_REP.password
+    );
+    uid = cred.user.uid;
+    console.log(`   ✓ Created auth account: ${DEMO_SALES_REP.email}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("email-already-in-use")) {
+      // Already exists — sign in to grab the UID
+      const cred = await signInWithEmailAndPassword(
+        firebaseAuth,
+        DEMO_SALES_REP.email,
+        DEMO_SALES_REP.password
+      );
+      uid = cred.user.uid;
+      console.log(`   ✓ Auth account already exists, using existing UID`);
+    } else {
+      throw err;
+    }
+  }
+
+  // Upsert the Firestore users doc with role=sales
+  await setDoc(doc(db, "users", uid), {
+    uid,
+    email: DEMO_SALES_REP.email,
+    displayName: DEMO_SALES_REP.displayName,
+    role: "sales",
+    createdAt: now,
+    updatedAt: now,
+  });
+  console.log(`   ✓ Firestore user doc written (role=sales)`);
+  console.log(`   → UID: ${uid}`);
+  return uid;
+}
 
 // ── Contacts seed data ─────────────────────────────────────────────────────
 const CONTACTS = [
@@ -107,6 +168,34 @@ const CONTACTS = [
   },
 ];
 
+// ── Pipeline seed data ────────────────────────────────────────────────────
+type DealStage = "new_lead"|"contacted"|"quoted"|"negotiation"|"won"|"lost";
+
+interface DealSpec {
+  title: string;
+  contactName: string;
+  value: number;
+  stage: DealStage;
+  probability: number;
+  daysAgoCreated: number;
+  daysToClose: number;
+}
+
+const PIPELINE_DEALS: DealSpec[] = [
+  { title: "Bulk Cotton Yarn Supply Contract",     contactName: "Vardhman Yarns Ltd",      value: 850000,  stage: "won",         probability: 100, daysAgoCreated: 60, daysToClose: -30 },
+  { title: "Silk Fabric Seasonal Order",           contactName: "Krishna Exports Pvt Ltd", value: 420000,  stage: "negotiation", probability: 70,  daysAgoCreated: 14, daysToClose: 10  },
+  { title: "Polyester Georgette — Q2 Supply",      contactName: "Mumbai Textile Hub",      value: 680000,  stage: "quoted",      probability: 55,  daysAgoCreated: 21, daysToClose: 20  },
+  { title: "Denim Fabric Annual Contract",         contactName: "Patel Garments",          value: 1200000, stage: "contacted",   probability: 35,  daysAgoCreated: 7,  daysToClose: 45  },
+  { title: "Kids Apparel Range",                   contactName: "Style Craft India",       value: 195000,  stage: "new_lead",    probability: 20,  daysAgoCreated: 3,  daysToClose: 60  },
+  { title: "Festival Season Garment Order",        contactName: "Royal Weavers Hyderabad", value: 310000,  stage: "quoted",      probability: 60,  daysAgoCreated: 10, daysToClose: 25  },
+  { title: "Cotton Fabric Export Tender",          contactName: "Chennai Cotton Co.",      value: 750000,  stage: "negotiation", probability: 65,  daysAgoCreated: 18, daysToClose: 15  },
+  { title: "Linen & Printed Fabric Mix",           contactName: "Jaipur Fabrics",          value: 280000,  stage: "contacted",   probability: 40,  daysAgoCreated: 5,  daysToClose: 40  },
+  { title: "Raw Silk Yarn Procurement",            contactName: "Silk Route Traders",      value: 560000,  stage: "won",         probability: 100, daysAgoCreated: 45, daysToClose: -10 },
+  { title: "Blended Yarn Pilot Batch",             contactName: "Indore Cotton Mills",     value: 125000,  stage: "new_lead",    probability: 15,  daysAgoCreated: 2,  daysToClose: 90  },
+  { title: "Wholesale Cotton Fabric Deal",         contactName: "Mumbai Textile Hub",      value: 940000,  stage: "lost",        probability: 0,   daysAgoCreated: 50, daysToClose: -5  },
+  { title: "Georgette Dupatta Export",             contactName: "Krishna Exports Pvt Ltd", value: 230000,  stage: "contacted",   probability: 30,  daysAgoCreated: 8,  daysToClose: 35  },
+];
+
 // ── Products seed data ─────────────────────────────────────────────────────
 const PRODUCTS = [
   { name: "Cotton Grey Fabric", sku: "FAB-CTN-001", category: "fabric", subCategory: "Cotton", unit: "meter", pricePerUnit: 85, stock: 4200, minStock: 500, icon: "fabric", isActive: true },
@@ -172,8 +261,8 @@ async function seedOrders(): Promise<string[]> {
     return [];
   }
 
-  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
-  const products  = productsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
+  const products  = productsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
 
   const findContact = (name: string) => contacts.find((c) => (c.companyName as string).includes(name.split(" ")[0]));
   const findProduct = (name: string) => products.find((p) => (p.name as string) === name);
@@ -199,6 +288,9 @@ async function seedOrders(): Promise<string[]> {
     const grandTotal = subtotal + tax - spec.discount;
     const orderNumber = `ORD-2026-${String(i + 1).padStart(4, "0")}`;
 
+    // Orders inherit the contact's owner so sales reps see their own orders.
+    const assignedTo = (contact.assignedTo as string) ?? "seed";
+
     const ref = await addDoc(collection(db, "orders"), {
       orderNumber,
       contactId:     contact.id,
@@ -210,7 +302,7 @@ async function seedOrders(): Promise<string[]> {
       grandTotal,
       status:        spec.status,
       paymentStatus: spec.paymentStatus,
-      assignedTo:    "seed",
+      assignedTo,
       notes:         "",
       __seeded:      true,
       createdAt:     daysAgo(spec.daysAgoCreated),
@@ -231,7 +323,7 @@ async function seedPayments(orderIds: string[]): Promise<void> {
 
   // Fetch the created orders to get contactId, contactName, grandTotal, orderNumber
   const ordersSnap = await getDocs(query(collection(db, "orders"), where("__seeded", "==", true)));
-  const orders = ordersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
+  const orders = ordersSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
 
   const getOrder = (idx: number) => orders.find((o) => o.id === orderIds[idx]);
 
@@ -259,7 +351,7 @@ async function seedPayments(orderIds: string[]): Promise<void> {
     const grandTotal = order.grandTotal as number;
     const amount = spec.amount === 0 ? grandTotal : spec.amount;
 
-    const doc: Record<string, unknown> = {
+    const paymentDoc: Record<string, unknown> = {
       orderId:     order.id,
       orderNumber: order.orderNumber,
       contactId:   order.contactId,
@@ -267,12 +359,13 @@ async function seedPayments(orderIds: string[]): Promise<void> {
       amount,
       method:      spec.method,
       date:        daysAgo(spec.daysAgoDate),
+      assignedTo:  (order.assignedTo as string) ?? "seed",
       __seeded:    true,
       createdAt:   daysAgo(spec.daysAgoDate),
     };
-    if (spec.reference) doc.reference = spec.reference;
+    if (spec.reference) paymentDoc.reference = spec.reference;
 
-    await addDoc(collection(db, "payments"), doc);
+    await addDoc(collection(db, "payments"), paymentDoc);
     console.log(`   ✓ ₹${amount.toLocaleString("en-IN")} — ${order.orderNumber as string} — ${spec.method}`);
     count++;
   }
@@ -280,16 +373,65 @@ async function seedPayments(orderIds: string[]): Promise<void> {
   console.log(`   → ${count} payments added`);
 }
 
-async function seedContacts() {
+async function seedPipeline(): Promise<void> {
+  console.log("\n🎯 Seeding pipeline...");
+
+  const contactsSnap = await getDocs(
+    query(collection(db, "contacts"), where("__seeded", "==", true))
+  );
+  const contacts = contactsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string } & Record<string, unknown>));
+  const findContact = (name: string) =>
+    contacts.find((c) => (c.companyName as string).includes(name.split(" ")[0]));
+
+  let count = 0;
+  for (const spec of PIPELINE_DEALS) {
+    const contact = findContact(spec.contactName);
+    const deal: Record<string, unknown> = {
+      title: spec.title,
+      value: spec.value,
+      stage: spec.stage,
+      probability: spec.probability,
+      // Deals inherit their contact's owner so sales reps see their own pipeline.
+      assignedTo: (contact?.assignedTo as string) ?? "seed",
+      activities: [],
+      __seeded: true,
+      createdAt: daysAgo(spec.daysAgoCreated),
+      updatedAt: daysAgo(Math.max(0, spec.daysAgoCreated - 2)),
+      expectedCloseDate: Timestamp.fromDate(new Date(Date.now() + spec.daysToClose * 86400000)),
+    };
+    if (contact) {
+      deal.contactId = contact.id;
+      deal.contactName = contact.companyName as string;
+    }
+    await addDoc(collection(db, "pipeline"), deal);
+    console.log(`   ✓ ${spec.title} — ${spec.stage} (${spec.probability}%)`);
+    count++;
+  }
+  console.log(`   → ${count} deals added`);
+}
+
+async function seedContacts(salesUid?: string) {
   console.log("\n📇 Seeding contacts...");
   const col = collection(db, "contacts");
   let count = 0;
-  for (const contact of CONTACTS) {
-    await addDoc(col, { ...contact, assignedTo: "seed", __seeded: true, createdAt: daysAgo(Math.floor(Math.random() * 90)), updatedAt: now });
-    console.log(`   ✓ ${contact.companyName}`);
+  let salesCount = 0;
+  for (let i = 0; i < CONTACTS.length; i++) {
+    const contact = CONTACTS[i];
+    // Assign every 3rd contact to the demo sales rep so the role-based filter
+    // has meaningful data to show. Fall back to "seed" (admin-only) otherwise.
+    const assignedTo = salesUid && i % 3 === 0 ? salesUid : "seed";
+    if (assignedTo === salesUid) salesCount++;
+    await addDoc(col, {
+      ...contact,
+      assignedTo,
+      __seeded: true,
+      createdAt: daysAgo(Math.floor(Math.random() * 90)),
+      updatedAt: now,
+    });
+    console.log(`   ✓ ${contact.companyName}${assignedTo === salesUid ? " → sales rep" : ""}`);
     count++;
   }
-  console.log(`   → ${count} contacts added`);
+  console.log(`   → ${count} contacts added${salesUid ? ` (${salesCount} assigned to sales rep)` : ""}`);
 }
 
 async function seedProducts() {
@@ -334,7 +476,8 @@ async function main() {
     if (arg === "clear") {
       await clearSeeded();
     } else if (arg === "contacts") {
-      await seedContacts();
+      const salesUid = await seedDemoSalesRep();
+      await seedContacts(salesUid);
     } else if (arg === "products") {
       await seedProducts();
     } else if (arg === "orders") {
@@ -345,12 +488,25 @@ async function main() {
       const ordersSnap = await getDocs(query(collection(db, "orders"), where("__seeded", "==", true)));
       const ids = ordersSnap.docs.map((d) => d.id);
       await seedPayments(ids);
+    } else if (arg === "pipeline") {
+      await seedPipeline();
+    } else if (arg === "sales-rep") {
+      await seedDemoSalesRep();
     } else {
-      // Default: seed everything
-      await seedContacts();
+      // Default: seed everything, including the demo sales rep account.
+      const salesUid = await seedDemoSalesRep();
+      await seedContacts(salesUid);
       await seedProducts();
       const ids = await seedOrders();
       await seedPayments(ids);
+      await seedPipeline();
+
+      console.log("\n──────────────────────────────────────────────");
+      console.log("  Demo sales rep credentials");
+      console.log(`    Email:    ${DEMO_SALES_REP.email}`);
+      console.log(`    Password: ${DEMO_SALES_REP.password}`);
+      console.log("  Log in with these to test role-based access.");
+      console.log("──────────────────────────────────────────────");
     }
     console.log("\n✅ Done!\n");
     process.exit(0);

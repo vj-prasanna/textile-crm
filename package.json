@@ -13,11 +13,14 @@
     "seed:products": "tsx scripts/seed.ts products",
     "seed:orders": "tsx scripts/seed.ts orders",
     "seed:payments": "tsx scripts/seed.ts payments",
+    "seed:pipeline": "tsx scripts/seed.ts pipeline",
+    "seed:sales-rep": "tsx scripts/seed.ts sales-rep",
     "seed:clear": "tsx scripts/seed.ts clear"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@google/generative-ai": "^0.24.1",
     "@mui/icons-material": "^9.0.0",
     "@mui/material": "^9.0.0",
     "@mui/material-nextjs": "^9.0.0",

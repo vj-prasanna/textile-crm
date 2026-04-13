@@ -22,14 +22,17 @@ export async function signInWithGoogle() {
   return result;
 }
 
+export type UserRole = "admin" | "sales";
+
 export async function registerWithEmail(
   email: string,
   password: string,
-  displayName: string
+  displayName: string,
+  role: UserRole = "sales"
 ) {
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(result.user, { displayName });
-  await createUserDocument(result.user, displayName);
+  await createUserDocument(result.user, displayName, role);
   return result;
 }
 
@@ -37,13 +40,17 @@ export async function signOut() {
   return firebaseSignOut(auth);
 }
 
-export async function createUserDocument(user: User, displayName?: string) {
+export async function createUserDocument(
+  user: User,
+  displayName?: string,
+  role: UserRole = "sales"
+) {
   const ref = doc(db, "users", user.uid);
   await setDoc(ref, {
     uid: user.uid,
     email: user.email,
     displayName: displayName ?? user.displayName ?? "User",
-    role: "admin",
+    role,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
